@@ -57,7 +57,9 @@ public class GameServer
             Socket clientSocket = serverSocket.Accept();
             clientSockets.Add(clientSocket);
             int playerBase = (boardSize / MAX_PLAYERS) * players.Count; // Početna baza za svakog igrača
-            Player newPlayer = new Player(clientSocket, players.Count + 1, playerBase);
+            int targetBase = (boardSize / MAX_PLAYERS) * players.Count; // Početna baza za svakog igrača
+
+            Player newPlayer = new Player(clientSocket, players.Count + 1, playerBase,targetBase);
             players.Add(newPlayer);
             Console.WriteLine($"Igrač {newPlayer.Id} povezan. Početna baza: {newPlayer.BasePosition}");
             SendMessageToPlayer(newPlayer, $"Dobrodošli, Igrač {newPlayer.Id}! Vaša baza je na poziciji {newPlayer.BasePosition}. Čeka se ostali igrači.");
@@ -284,14 +286,17 @@ public class Player
     public List<int> FigurePositions { get; private set; }
     public Socket ClientSocket { get; private set; }
     public int BasePosition { get; private set; }
+    public int FiguresFinished { get; private set; }
+    public int TargetPosition { get; private set; }
 
-    public Player(Socket clientSocket, int id, int basePosition)
+    public Player(Socket clientSocket, int id, int basePosition, int targetPosition)
     {
         Id = id;
         ClientSocket = clientSocket;
         BasePosition = basePosition;
         FigurePositions = new List<int>();
         FiguresInPlay = 0;
+        TargetPosition = targetPosition;
     }
 
     public void StartFigure()
@@ -303,19 +308,78 @@ public class Player
             Console.WriteLine($"Igrač {Id} je pokrenuo novu figuru iz baze ({BasePosition}).");
         }
     }
-    public void MoveFigure(int figureIndex, int steps, int boardSize)
+    public bool MoveFigure(int figureIndex, int steps, int boardSize)
     {
-        if (figureIndex >= 0 && figureIndex < FigurePositions.Count)
+        if (figureIndex < 0 || figureIndex >= FigurePositions.Count)
         {
-            int newPosition = (FigurePositions[figureIndex] + steps) % boardSize;
+            Console.WriteLine("Neispravan izbor figure.");
+            return false;
+        }
+
+        int currentPosition = FigurePositions[figureIndex];
+
+        // Koliko polja ostaje do cilja?
+        int distanceToTarget = (TargetPosition - currentPosition + boardSize) % boardSize;
+
+        if (distanceToTarget == 0)
+            distanceToTarget = boardSize;
+
+        if (distanceToTarget == steps)
+        {
+            // Tačno za ulazak u cilj
+            FigurePositions.RemoveAt(figureIndex);
+            FiguresInPlay--;
+            FiguresFinished++;
+            string message = $"🎉 Figura igrača {Id} je stigla u ciljnu bazu na poziciji {TargetPosition}!\n" +
+                 $"🏁 Ukupno završenih figura: {FiguresFinished}";
+
+            Console.WriteLine(message);
+
+            // Pošalji klijentu
+            try
+            {
+                NetworkStream stream = new NetworkStream(ClientSocket);
+                byte[] data = Encoding.UTF8.GetBytes(message);
+                stream.Write(data, 0, data.Length);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠️ Greška pri slanju poruke klijentu {Id}: {ex.Message}");
+            }
+            return true;
+        }
+        else if (steps < distanceToTarget)
+        {
+            // Normalno pomeranje
+            int newPosition = (currentPosition + steps) % boardSize;
             FigurePositions[figureIndex] = newPosition;
-            Console.WriteLine($"Figura {figureIndex + 1} igrača {Id} pomerena na poziciju {newPosition}.");
+            Console.WriteLine($"Figura igrača {Id} pomerena na poziciju {newPosition}.");
+            return true;
         }
         else
         {
-            Console.WriteLine("Neispravan izbor figure.");
+            // Prevelik broj – ne može da uđe u cilj
+            //Console.WriteLine($"Figura igrača {Id} ne može da se pomeri jer je potrebno {distanceToTarget} polja za ulazak u cilj.");
+            string poruka = $"❌ Figura igrača {Id} ne može da se pomeri jer joj nedostaje {distanceToTarget} polja do cilja.";
+
+            Console.WriteLine(poruka); // Ispis na serveru
+
+            // Pošalji klijentu
+            byte[] data = Encoding.UTF8.GetBytes(poruka);
+            try
+            {
+                NetworkStream stream = new NetworkStream(ClientSocket);
+                stream.Write(data, 0, data.Length);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠️ Greška pri slanju poruke klijentu {Id}: {ex.Message}");
+            }
+
+            return false;
         }
     }
+
     //public void MoveFigure(int steps, int boardSize)
     //{
     //    for (int i = 0; i < FigurePositions.Count; i++)
