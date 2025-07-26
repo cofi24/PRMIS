@@ -39,6 +39,8 @@ public class GameServer
     private int boardSize;
     private bool gameRunning = false;
     private Socket serverSocket;
+    private int nextPlayerId = 1;
+    private int gameRound = 0;
 
     public GameServer(int boardSize)
     {
@@ -59,29 +61,47 @@ public class GameServer
             int playerBase = (boardSize / MAX_PLAYERS) * players.Count; // Početna baza za svakog igrača
             int targetBase = (boardSize / MAX_PLAYERS) * players.Count; // Početna baza za svakog igrača
 
-            Player newPlayer = new Player(clientSocket, players.Count + 1, playerBase,targetBase);
+            Player newPlayer = new Player(clientSocket, nextPlayerId, playerBase,targetBase);
+            nextPlayerId++;
             players.Add(newPlayer);
             Console.WriteLine($"Igrač {newPlayer.Id} povezan. Početna baza: {newPlayer.BasePosition}");
             SendMessageToPlayer(newPlayer, $"Dobrodošli, Igrač {newPlayer.Id}! Vaša baza je na poziciji {newPlayer.BasePosition}. Čeka se ostali igrači.");
         }
 
-        gameRunning = true;
-        Console.WriteLine("Igra počinje!");
-
-        while (gameRunning)
+        while (true)
         {
-            foreach (var player in players)
+            StartGameLoop(gameRound);  // Pokreće jednu igru
+
+            AnnounceEndAndAskReplay();  // Pita sve da li žele novu
+
+            List<Player> readyPlayers = WaitForReplayResponses();
+
+            if (readyPlayers.Count == 0)
             {
-                HandlePlayerTurn(player);
-                if (CheckGameOver())
+                Console.WriteLine("Svi igrači su otišli. Server se gasi.");
+                break;
+            }
+            else if (readyPlayers.Count < MAX_PLAYERS)
+            {
+                Console.WriteLine("Čekamo nove igrače...");
+
+                while (readyPlayers.Count < MAX_PLAYERS)
                 {
-                    gameRunning = false;
-                    break;
+                    Socket clientSocket = serverSocket.Accept();
+                    int playerBase = (boardSize / MAX_PLAYERS) * readyPlayers.Count;
+                    int targetBase = (playerBase + boardSize / 2) % boardSize;
+
+                    Player newPlayer = new Player(clientSocket, nextPlayerId, playerBase, targetBase);
+                    nextPlayerId++;
+                    readyPlayers.Add(newPlayer);
+
+                    SendMessageToPlayer(newPlayer, "Dobrodošli u novu igru!");
                 }
             }
+            gameRound++;
+            // Postavi novu listu igrača
+            players = readyPlayers;
         }
-
-        AnnounceWinner();
     }
 
     private void HandlePlayerTurn(Player player)
@@ -264,6 +284,98 @@ public class GameServer
         }
     }
 
+    private void AnnounceEndAndAskReplay()
+    {
+        StringBuilder sb = new StringBuilder();
+        sb.AppendLine("Kraj igre! Rang lista:");
+        int rank = 1;
+        foreach (var player in players.OrderByDescending(p => p.FiguresFinished))
+        {
+            sb.AppendLine($"{rank}. Igrač {player.Id} - završenih figura: {player.FiguresFinished}");
+            rank++;
+        }
+
+        foreach (var p in players)
+        {
+            try
+            {
+                SendMessageToPlayer(p, sb.ToString());
+                SendMessageToPlayer(p, "Da li želite da igrate ponovo? (da/ne)");
+            }
+            catch
+            {
+                Console.WriteLine($"Ne mogu da pošaljem igraču {p.Id} - diskonektovan.");
+            }
+        }
+    }
+
+    private List<Player> WaitForReplayResponses()
+    {
+        List<Player> readyPlayers = new List<Player>();
+        // players = readyPlayers; // Zamenjujemo staru listu sa samo spremnim igračima
+
+
+        foreach (var p in players)
+        {
+            try
+            {
+                string response = ReceiveMessage(p.ClientSocket);
+                if (response != null && response.Trim().ToLower() == "da")
+                {
+                    readyPlayers.Add(p);
+                }
+                else
+                {
+                    Console.WriteLine($"Igrač {p.Id} nije spreman za novu igru.");
+                }
+            }
+            catch
+            {
+                Console.WriteLine($"Igrač {p.Id} diskonektovan.");
+            }
+        }
+
+        return readyPlayers;
+    }
+
+    private void StartGameLoop(int gameRound)
+    {
+        gameRunning = true;
+
+        Console.WriteLine("Nova igra počinje!");
+
+        //foreach (var player in players)
+        //{
+        //    player.ResetForNewGame();
+        //    SendMessageToPlayer(player, "Nova igra počinje!");
+        //}
+        for (int i = 0; i < players.Count; i++)
+        {
+            int rotatedBase = (boardSize / MAX_PLAYERS) * ((i + gameRound) % MAX_PLAYERS);
+            players[i].ResetForNewGame(rotatedBase, rotatedBase); // baza = cilj
+            SendMessageToPlayer(players[i], $"Nova igra počinje! Vaša nova baza: {rotatedBase}");
+        }
+
+        while (gameRunning)
+        {
+            foreach (var player in players)
+            {
+                HandlePlayerTurn(player);
+                if (CheckGameOver())
+                {
+                    gameRunning = false;
+                    break;
+                }
+            }
+        }
+
+        AnnounceWinner();
+    }
+
+
+
+
+
     private string ReceiveMessage(Socket socket)
     {
         byte[] buffer = new byte[256];
@@ -412,6 +524,14 @@ public class Player
             FiguresInPlay--;
             Console.WriteLine($"Figura na poziciji {position} vraćena u bazu igrača {Id}.");
         }
+    }
+    public void ResetForNewGame(int newBase, int newTarget)
+    {
+        BasePosition = newBase;
+        TargetPosition = newTarget;
+        FigurePositions.Clear();
+        FiguresInPlay = 0;
+        FiguresFinished = 0;
     }
 }
 

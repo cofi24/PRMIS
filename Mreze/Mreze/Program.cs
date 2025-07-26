@@ -9,6 +9,8 @@ namespace Mreze
 {
     public class Program
     {
+        static Socket clientSocket;
+
         static void Main(string[] args)
         {
             Console.WriteLine("Unesite IP adresu servera:");
@@ -64,8 +66,23 @@ namespace Mreze
                     // Prikaz ažuriranih pozicija figura
                     Console.WriteLine("Server: " + message);
                 }
+                else if (message.Contains("(da/ne)"))
+                {
+                    Console.Write("Unesite odgovor (da/ne): ");
+                    string input = Console.ReadLine();
+                    SendMessage(input);
+                }
             }
 
         }
+
+
+
+        static void SendMessage(string message)
+        {
+            byte[] data = Encoding.UTF8.GetBytes(message);
+            clientSocket.Send(data);
+        }
+
     }
 }
