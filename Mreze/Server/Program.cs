@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Server
@@ -33,7 +35,7 @@ namespace Server
 
 public class GameServer
 {
-    private const int MAX_PLAYERS = 4;
+    private const int MAX_PLAYERS = 2;
     private List<Player> players = new List<Player>();
     private List<Socket> clientSockets = new List<Socket>();
     private int boardSize;
@@ -112,52 +114,70 @@ public class GameServer
         {
             // Čekanje na rezultat bacanja kockice od igrača
             SendMessageToPlayer(player, "Vaš je red. Bacite kockicu!");
-            string result = ReceiveMessage(player.ClientSocket);
+            string result = ReceiveMessagePolling(player.ClientSocket);
+            if (string.IsNullOrEmpty(result))
+            {
+                Console.WriteLine($"Igrač {player.Id} je prekinuo vezu.");
+                return;
+            }
             int diceRoll = int.Parse(result);
             Console.WriteLine($"Igrač {player.Id} je bacio {diceRoll}.");
 
-            if (diceRoll == 6)
+            if (player.FiguresInPlay == 0)
             {
-                // Ako je bacio 6, dobija dodatni potez
-                SendMessageToPlayer(player, "Bacili ste 6! Dobijate dodatni potez.");
-
-                // Pitajte igrača da li želi izbaciti novu figuru ili pomeriti postojeću
-                SendMessageToPlayer(player, "Da li želite da izbacite novu figuru (1) ili pomerite postojeću figuru (2)?");
-                string choice = ReceiveMessage(player.ClientSocket);
-
-                if (choice == "1")
+                // Nema figura
+                if (diceRoll == 6)
                 {
-                    if (player.FiguresInPlay < 4)
-                    {
-                        player.StartFigure();
-                    }
-                    else
-                    {
-                        SendMessageToPlayer(player, "Sve figure su već na tabli. Pomeramo postojeću figuru.");
-                        AskAndMoveFigure(player, diceRoll);
-                    }
-                }
-                else if (choice == "2")
-                {
-                    AskAndMoveFigure(player, diceRoll);
+                    player.StartFigure();
+                    hasExtraTurn = true;
                 }
                 else
                 {
-                    SendMessageToPlayer(player, "Neispravan izbor. Figura se pomera.");
-                    AskAndMoveFigure(player, diceRoll);
+                    SendMessageToPlayer(player, "Nemate nijednu figuru na tabli. Potez preskočen.");
+                    hasExtraTurn = false;
                 }
+            }
+            else if (player.FiguresInPlay == 4)
+            {
+                // Ima sve figure na tabli
+                SendMessageToPlayer(player, "Sve figure su na tabli. Morate pomeriti postojeću figuru.");
+                AskAndMoveFigure(player, diceRoll);
 
-                // Igrač nastavlja jer je dobio dodatni potez
-                hasExtraTurn = true;
+                hasExtraTurn = diceRoll == 6;
             }
             else
             {
-                // Ako nije bacio 6, obavlja se standardni potez
-                AskAndMoveFigure(player, diceRoll);
-                hasExtraTurn = false;
+                // Ima između 1 i 3 figure
+                if (diceRoll == 6)
+                {
+                    SendMessageToPlayer(player, "Bacili ste 6! Dobijate dodatni potez.");
+                    // SendMessageToPlayer(player, "Da li želite da izbacite novu figuru (1) ili pomerite postojeću figuru (2)?");
+                    string choice = ReceiveMessagePolling(player.ClientSocket);
+
+                    if (choice == "1")
+                    {
+                        player.StartFigure();
+                    }
+                    else if (choice == "2")
+                    {
+                        AskAndMoveFigure(player, diceRoll);
+                    }
+                    else
+                    {
+                        SendMessageToPlayer(player, "Neispravan izbor. Figura se pomera.");
+                        AskAndMoveFigure(player, diceRoll);
+                    }
+
+                    hasExtraTurn = true; // jer je šestica
+                }
+                else
+                {
+                    AskAndMoveFigure(player, diceRoll);
+                    hasExtraTurn = false;
+                }
             }
 
-            // Provera stanja na tabli
+            // Provera sudara posle svakog poteza
             SendMessageToPlayer(player, $"Vaše figure su sada na: {string.Join(", ", player.GetFigurePositions())}");
             CheckForCollisions(player);
         }
@@ -206,7 +226,7 @@ public class GameServer
         SendMessageToPlayer(player, "Unesite broj figure koju želite da pomerite (1 - prva figura, 2 - druga figura, ...):");
 
         // Primite izbor od igrača
-        string choice = ReceiveMessage(player.ClientSocket);
+        string choice = ReceiveMessagePolling(player.ClientSocket);
         int figureIndex;
         if (int.TryParse(choice, out figureIndex))
         {
@@ -241,7 +261,7 @@ public class GameServer
                         SendMessageToPlayer(otherPlayer, $"Vaša figura je eliminisana od strane igrača {player.Id} i vraćena u bazu.");
 
                         // Ažuriranje svih igrača
-                        BroadcastGameState();
+                       // BroadcastGameState();
                     }
                 }
             }
@@ -271,15 +291,25 @@ public class GameServer
 
     private void AnnounceWinner()
     {
+        // Pronađi pobednika
+        Player winner = players.FirstOrDefault(p => p.HasWon());
+
+        if (winner == null)
+        {
+            Console.WriteLine("Niko nije pobedio.");
+            return;
+        }
+        Console.WriteLine($"Pobednik je igrač {winner.Id}!");
+
         foreach (var player in players)
         {
-            if (player.HasWon())
+            if (player == winner)
             {
                 SendMessageToPlayer(player, "Čestitamo! Pobedili ste!");
             }
             else
             {
-                SendMessageToPlayer(player, "Nažalost, niste pobedili.");
+                SendMessageToPlayer(player, $"Nažalost, niste pobedili. Pobednik je igrač {winner.Id}.");
             }
         }
     }
@@ -319,7 +349,7 @@ public class GameServer
         {
             try
             {
-                string response = ReceiveMessage(p.ClientSocket);
+                string response = ReceiveMessagePolling(p.ClientSocket);
                 if (response != null && response.Trim().ToLower() == "da")
                 {
                     readyPlayers.Add(p);
@@ -344,11 +374,7 @@ public class GameServer
 
         Console.WriteLine("Nova igra počinje!");
 
-        //foreach (var player in players)
-        //{
-        //    player.ResetForNewGame();
-        //    SendMessageToPlayer(player, "Nova igra počinje!");
-        //}
+       
         for (int i = 0; i < players.Count; i++)
         {
             int rotatedBase = (boardSize / MAX_PLAYERS) * ((i + gameRound) % MAX_PLAYERS);
@@ -376,18 +402,46 @@ public class GameServer
 
 
 
-    private string ReceiveMessage(Socket socket)
+    private string ReceiveMessagePolling(Socket clientSocket)
     {
-        byte[] buffer = new byte[256];
-        int bytesRead = socket.Receive(buffer);
-        return Encoding.UTF8.GetString(buffer, 0, bytesRead);
+        NetworkStream stream = new NetworkStream(clientSocket);
+        string message = null;
+
+        while (message == null)
+        {
+            if (stream.DataAvailable)
+            {
+                byte[] buffer = new byte[1024];
+                int bytesRead = stream.Read(buffer, 0, buffer.Length);
+                message = Encoding.UTF8.GetString(buffer, 0, bytesRead).Trim();
+            }
+            else
+            {
+                Thread.Sleep(10);
+            }
+        }
+
+        return message;
     }
 
-    private void SendMessageToPlayer(Player player, string message)
+    public void SendMessageToPlayer(Player player, string message)
     {
-        byte[] data = Encoding.UTF8.GetBytes(message);
-        player.ClientSocket.Send(data);
+        try
+        {
+            Console.WriteLine($"[SERVER → Igrač {player.Id}] {message}");
+            byte[] data = Encoding.UTF8.GetBytes(message + "\n");
+            player.ClientSocket.Send(data);
+        }
+        catch (SocketException ex)
+        {
+            Console.WriteLine($"Greška prilikom slanja igraču {player.Id}: {ex.Message}");
+        }
+        catch (IOException ex)
+        {
+            Console.WriteLine($"IO greška prilikom slanja igraču {player.Id}: {ex.Message}");
+        }
     }
+
 }
 
 
@@ -509,7 +563,7 @@ public class Player
 
     public bool HasWon()
     {
-        return FigurePositions.Count == 4 && FigurePositions.TrueForAll(p => p == BasePosition);
+        return FiguresFinished >= 4;
     }
 
     public List<int> GetFigurePositions()

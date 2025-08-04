@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Mreze
@@ -16,66 +18,104 @@ namespace Mreze
             Console.WriteLine("Unesite IP adresu servera:");
             string serverIp = Console.ReadLine();
 
-            Console.WriteLine("Povezivanje sa serverom...");
-            TcpClient client = new TcpClient(serverIp, 51000);
-            NetworkStream stream = client.GetStream();
-
-            Console.WriteLine("Povezani sa serverom. Igra počinje!");
-
-            // Glavna petlja za igru
-            while (true)
+            try
             {
-                // Čekaj na poruku servera
-                byte[] buffer = new byte[256];
-                int bytesRead = stream.Read(buffer, 0, buffer.Length);
-                string message = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                // Kreiraj socket (IPv4, TCP)
+                clientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
-                Console.WriteLine("Server: " + message);
+                // Konektuj se na server
+                clientSocket.Connect(new IPEndPoint(IPAddress.Parse(serverIp), 51000));
+                Console.WriteLine("Povezani sa serverom. Igra počinje!");
 
-                if (message.Contains("Vaš je red"))
+                // Pokreni nit za primanje podataka sa servera
+                Thread recvThread = new Thread(StartPolling);
+                recvThread.IsBackground = true;
+                recvThread.Start();
+
+                // Glavna nit šalje ili samo drži program aktivnim
+                while (true)
                 {
-                    // Igrač baca kockicu
-                    Console.Write("Bacite kockicu (unesite broj): ");
-                    string diceRoll = Console.ReadLine();
-                    byte[] data = Encoding.UTF8.GetBytes(diceRoll);
-                    stream.Write(data, 0, data.Length);
+                    Thread.Sleep(100);
                 }
-                else if (message.Contains("Bacili ste 6"))
-                {
-                    // Pitanje za izbor akcije
-                    Console.WriteLine("Izaberite: 1 - Izbaciti novu figuru, 2 - Pomeriti postojeću figuru.");
-                    string choice = Console.ReadLine();
-                    byte[] data = Encoding.UTF8.GetBytes(choice);
-                    stream.Write(data, 0, data.Length);
-                }
-                else if (message.Contains("Unesite broj figure"))
-                {
-                    // Igrač bira figuru
-                    Console.Write("Izaberite figuru za pomeranje: ");
-                    string figureChoice = Console.ReadLine();
-                    byte[] data = Encoding.UTF8.GetBytes(figureChoice);
-                    stream.Write(data, 0, data.Length);
-                }
-                else if (message.Contains("eliminisana"))
-                {
-                    // Obaveštenje o sudaru
-                    Console.WriteLine("Server: " + message);
-                }
-                else if (message.Contains("Ažurirane pozicije"))
-                {
-                    // Prikaz ažuriranih pozicija figura
-                    Console.WriteLine("Server: " + message);
-                }
-                else if (message.Contains("(da/ne)"))
-                {
-                    Console.Write("Unesite odgovor (da/ne): ");
-                    string input = Console.ReadLine();
-                    SendMessage(input);
-                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Greška: " + ex.Message);
             }
 
         }
 
+        static void StartPolling()
+        {
+            new Thread(() =>
+            {
+                byte[] buffer = new byte[1024];
+
+                while (true)
+                {
+                    try
+                    {
+                        // Proverava koliko bajtova je spremno za čitanje
+                        if (clientSocket.Available > 0)
+                        {
+                            int bytesRead = clientSocket.Receive(buffer);
+                            if (bytesRead > 0)
+                            {
+                                string message = Encoding.UTF8.GetString(buffer, 0, bytesRead).Trim();
+
+                                if (string.IsNullOrEmpty(message)) continue;
+
+                                Console.WriteLine("Server: " + message);
+
+                                // Obrada poruka kao i ranije
+                                if (message.Contains("Vaš je red"))
+                                {
+                                    Console.Write("Bacite kockicu (unesite broj): ");
+                                    string diceRoll = Console.ReadLine();
+                                    SendMessage(diceRoll);
+                                }
+                                else if (message.Contains("Bacili ste 6"))
+                                {
+                                    Console.WriteLine("Izaberite: 1 - Izbaciti novu figuru, 2 - Pomeriti postojeću figuru.");
+                                    string choice = Console.ReadLine();
+                                    SendMessage(choice);
+                                }
+                                else if (message.Contains("Unesite broj figure"))
+                                {
+                                    Console.Write("Izaberite figuru za pomeranje: ");
+                                    string figureChoice = Console.ReadLine();
+                                    SendMessage(figureChoice);
+                                }
+                                else if (message.Contains("eliminisana"))
+                                {
+                                    Console.WriteLine("Obaveštenje: " + message);
+                                }
+                                else if (message.Contains("Ažurirane pozicije"))
+                                {
+                                    Console.WriteLine("Server: " + message);
+                                }
+                                else if (message.Contains("(da/ne)"))
+                                {
+                                    Console.Write("Unesite odgovor (da/ne): ");
+                                    string input = Console.ReadLine();
+                                    SendMessage(input);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            Thread.Sleep(10); // Ne zamaraj CPU
+                        }
+                    }
+                    catch (SocketException se)
+                    {
+
+                        Console.WriteLine("Greška u prijemu: " + se.Message);
+                        break;
+                    }
+                }
+            }).Start();
+        }
 
 
         static void SendMessage(string message)
