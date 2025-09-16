@@ -1,13 +1,13 @@
 {
   "Version": 1,
-  "WorkspaceRootPath": "C:\\Users\\glisi\\OneDrive\\Desktop\\git\\PRMIS\\Mreze\\",
+  "WorkspaceRootPath": "C:\\Users\\cofi24\\Desktop\\Git uploads\\PRMIS\\Mreze\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{D0568526-2B8F-4837-B455-6724C8509BAE}|Mreze\\Client.csproj|C:\\Users\\glisi\\OneDrive\\Desktop\\git\\PRMIS\\Mreze\\mreze\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{D0568526-2B8F-4837-B455-6724C8509BAE}|Mreze\\Client.csproj|c:\\users\\cofi24\\desktop\\git uploads\\prmis\\mreze\\mreze\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{D0568526-2B8F-4837-B455-6724C8509BAE}|Mreze\\Client.csproj|solutionrelative:mreze\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{C39D9B21-51D4-4D00-8C46-6B8D589C90D5}|Server\\Server.csproj|c:\\users\\glisi\\onedrive\\desktop\\git\\prmis\\mreze\\server\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{C39D9B21-51D4-4D00-8C46-6B8D589C90D5}|Server\\Server.csproj|C:\\Users\\cofi24\\Desktop\\Git uploads\\PRMIS\\Mreze\\server\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{C39D9B21-51D4-4D00-8C46-6B8D589C90D5}|Server\\Server.csproj|solutionrelative:server\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
@@ -24,11 +24,11 @@
               "$type": "Document",
               "DocumentIndex": 1,
               "Title": "Program.cs",
-              "DocumentMoniker": "C:\\Users\\glisi\\OneDrive\\Desktop\\git\\PRMIS\\Mreze\\Server\\Program.cs",
+              "DocumentMoniker": "C:\\Users\\cofi24\\Desktop\\Git uploads\\PRMIS\\Mreze\\Server\\Program.cs",
               "RelativeDocumentMoniker": "Server\\Program.cs",
-              "ToolTip": "C:\\Users\\glisi\\OneDrive\\Desktop\\git\\PRMIS\\Mreze\\Server\\Program.cs",
+              "ToolTip": "C:\\Users\\cofi24\\Desktop\\Git uploads\\PRMIS\\Mreze\\Server\\Program.cs",
               "RelativeToolTip": "Server\\Program.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAADUCAAAkAAAAAAAAAA==",
+              "ViewState": "AgIAANIAAAAAAAAAAAAmwAgBAAAVAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-07-18T15:40:20.43Z",
               "EditorCaption": ""
@@ -37,11 +37,11 @@
               "$type": "Document",
               "DocumentIndex": 0,
               "Title": "Program.cs",
-              "DocumentMoniker": "C:\\Users\\glisi\\OneDrive\\Desktop\\git\\PRMIS\\Mreze\\Mreze\\Program.cs",
+              "DocumentMoniker": "C:\\Users\\cofi24\\Desktop\\Git uploads\\PRMIS\\Mreze\\Mreze\\Program.cs",
               "RelativeDocumentMoniker": "Mreze\\Program.cs",
-              "ToolTip": "C:\\Users\\glisi\\OneDrive\\Desktop\\git\\PRMIS\\Mreze\\Mreze\\Program.cs",
+              "ToolTip": "C:\\Users\\cofi24\\Desktop\\Git uploads\\PRMIS\\Mreze\\Mreze\\Program.cs",
               "RelativeToolTip": "Mreze\\Program.cs",
-              "ViewState": "AgIAAEIAAAAAAAAAAAAowHYAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAD8AAAAAAAAAAAAowFEAAAAcAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-07-14T15:06:22.039Z",
               "EditorCaption": ""

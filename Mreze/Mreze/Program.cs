@@ -70,9 +70,22 @@ namespace Mreze
                                 // Obrada poruka kao i ranije
                                 if (message.Contains("Vaš je red"))
                                 {
-                                    Console.Write("Bacite kockicu (unesite broj): ");
-                                    string diceRoll = Console.ReadLine();
-                                    SendMessage(diceRoll);
+                                    int diceRoll;
+                                    while (true)
+                                    {
+                                        Console.Write("Bacite kockicu (1-6): ");
+                                        string input = Console.ReadLine();
+
+                                        // pokuša parsiranje i provera granica
+                                        if (int.TryParse(input, out diceRoll) && diceRoll >= 1 && diceRoll <= 6)
+                                        {
+                                            break; // validan unos → izlaz iz petlje
+                                        }
+
+                                        Console.WriteLine("❌ Nevažeći unos. Morate uneti broj od 1 do 6.");
+                                    }
+
+                                    SendMessage(diceRoll.ToString());
                                 }
                                 else if (message.Contains("Bacili ste 6"))
                                 {

@@ -1,0 +1,7 @@
+C:\Users\cofi24\Desktop\Git uploads\PRMIS\Mreze\Mreze\bin\Debug\Mreze.exe.config
+C:\Users\cofi24\Desktop\Git uploads\PRMIS\Mreze\Mreze\bin\Debug\Mreze.exe
+C:\Users\cofi24\Desktop\Git uploads\PRMIS\Mreze\Mreze\bin\Debug\Mreze.pdb
+C:\Users\cofi24\Desktop\Git uploads\PRMIS\Mreze\Mreze\obj\Debug\Client.csproj.AssemblyReference.cache
+C:\Users\cofi24\Desktop\Git uploads\PRMIS\Mreze\Mreze\obj\Debug\Client.csproj.CoreCompileInputs.cache
+C:\Users\cofi24\Desktop\Git uploads\PRMIS\Mreze\Mreze\obj\Debug\Mreze.exe
+C:\Users\cofi24\Desktop\Git uploads\PRMIS\Mreze\Mreze\obj\Debug\Mreze.pdb
