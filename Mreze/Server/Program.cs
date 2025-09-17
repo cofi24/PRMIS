@@ -518,8 +518,27 @@ public class Player
         {
             // Normalno pomeranje
             int newPosition = (currentPosition + steps) % boardSize;
+            if (FigurePositions.Contains(newPosition))
+            {
+                string poruka = $"❌ Figura igrača {Id} ne može da stane na poziciju {newPosition} jer je već zauzeta.";
+                Console.WriteLine(poruka);
+
+                // Pošalji klijentu
+                try
+                {
+                    NetworkStream stream = new NetworkStream(ClientSocket);
+                    byte[] data = Encoding.UTF8.GetBytes(poruka);
+                    stream.Write(data, 0, data.Length);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"⚠️ Greška pri slanju poruke klijentu {Id}: {ex.Message}");
+                }
+
+                return false;
+            }
             FigurePositions[figureIndex] = newPosition;
-            Console.WriteLine($"Figura igrača {Id} pomerena na poziciju {newPosition}.");
+            Console.WriteLine($"Figura igrača {Id} pomerena na poziciju {newPosition}. Ostaje još {distanceToTarget - steps} polja do cilja.");
             return true;
         }
         else
@@ -531,10 +550,11 @@ public class Player
             Console.WriteLine(poruka); // Ispis na serveru
 
             // Pošalji klijentu
-            byte[] data = Encoding.UTF8.GetBytes(poruka);
+           
             try
             {
                 NetworkStream stream = new NetworkStream(ClientSocket);
+                byte[] data = Encoding.UTF8.GetBytes(poruka);
                 stream.Write(data, 0, data.Length);
             }
             catch (Exception ex)
